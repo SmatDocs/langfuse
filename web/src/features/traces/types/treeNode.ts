@@ -22,6 +22,8 @@ export type TreeNode = {
   startTime: Date;
   endTime?: Date | null;
   level?: ObservationLevelType;
+  /** Model name, shown as a chip on generation rows. */
+  model?: string | null;
   children: TreeNode[];
   // Token usage
   inputUsage?: number | null;

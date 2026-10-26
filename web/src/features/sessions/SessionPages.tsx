@@ -1,4 +1,5 @@
 import { headerActionClassName } from "@/src/features/traces/components/headerActionClassName";
+import { SessionThreadPage } from "@/src/features/sessions/thread/SessionThreadPage";
 /* eslint-disable no-nested-ternary, @repo/component-file-structure, react/no-unstable-nested-components, @typescript-eslint/no-use-before-define */
 /* eslint-disable @repo/no-style-props, @repo/no-null-render */
 import { cn } from "@/src/utils/tailwind";
@@ -1040,6 +1041,7 @@ export const SessionEventsPage: React.FC<{
       retry: shouldRetryResourceQuery,
     },
   );
+  const [view] = useQueryParam("view", StringParam);
 
   if (session.error?.data?.code === "UNAUTHORIZED")
     return <ErrorPage message="You do not have access to this session." />;
@@ -1067,6 +1069,16 @@ export const SessionEventsPage: React.FC<{
             session.refetch();
           },
         }}
+      />
+    );
+  }
+
+  if (view !== "feed") {
+    return (
+      <SessionThreadPage
+        projectId={projectId}
+        sessionId={sessionId}
+        turns={tracesQuery.data}
       />
     );
   }
@@ -1328,6 +1340,7 @@ const LoadedSessionEventsPage: React.FC<{
     };
   }, [positionInTraceColumn, sessionEventsTableName]);
   const [urlFiltersQuery] = useQueryParam("filter", StringParam);
+  const [, setUrlView] = useQueryParam("view", StringParam);
   const [urlTranscriptSource, setUrlTranscriptSource] = useQueryParam(
     "transcriptSource",
     StringParam,
@@ -1809,6 +1822,14 @@ const LoadedSessionEventsPage: React.FC<{
             ) : undefined,
             actionButtonsRight: (
               <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={headerActionClassName}
+                  onClick={() => setUrlView(undefined, "replaceIn")}
+                >
+                  Thread view
+                </Button>
                 {webCalloutAction && (
                   <WebCalloutButton action={webCalloutAction} />
                 )}

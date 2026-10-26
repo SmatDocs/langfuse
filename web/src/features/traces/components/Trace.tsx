@@ -35,6 +35,7 @@ import { useMemo, type ReactNode } from "react";
 import { useRouter } from "next/router";
 import { getCommentDrawerInitialStateFromUrl } from "@/src/features/comments/CommentDrawerController";
 import { TraceReviewPanelProvider } from "@/src/features/traces/contexts/TraceReviewPanelProvider";
+import { useTraceNavigationSlot } from "@/src/features/traces/contexts/TraceNavigationSlotProvider";
 import { TraceReviewPanel } from "./TraceReviewPanel";
 import { useHasProjectAccess } from "@/src/features/rbac";
 import { staleProps } from "@/src/features/traces/fns/staleProps";
@@ -395,6 +396,12 @@ function DesktopTraceWorkspace({
   reviewPanel?: ReactNode;
   isLoading?: boolean;
 }) {
+  const wrapNavigation = useTraceNavigationSlot();
+  const navigation = isLoading ? (
+    <TraceTree isLoading />
+  ) : (
+    <TracePanelNavigation />
+  );
   return (
     <div className="h-full" data-trace-review-open={reviewOpen || undefined}>
       <TraceLayoutDesktop
@@ -405,7 +412,7 @@ function DesktopTraceWorkspace({
       >
         <TraceLayoutDesktop.NavigationPanel>
           <TracePanelNavigationLayoutDesktop isLoading={isLoading}>
-            {isLoading ? <TraceTree isLoading /> : <TracePanelNavigation />}
+            {wrapNavigation ? wrapNavigation(navigation) : navigation}
           </TracePanelNavigationLayoutDesktop>
         </TraceLayoutDesktop.NavigationPanel>
         <TraceLayoutDesktop.ResizeHandle />
