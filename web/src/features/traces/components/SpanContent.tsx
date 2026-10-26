@@ -25,7 +25,11 @@ import { CommentCountIcon } from "@/src/features/comments/CommentCountIcon";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import { cn } from "@/src/utils/tailwind";
 import { formatIntervalSeconds } from "@/src/utils/dates";
-import { usdFormatter, numberFormatter } from "@/src/utils/numbers";
+import {
+  usdFormatter,
+  numberFormatter,
+  compactNumberFormatter,
+} from "@/src/utils/numbers";
 import {
   isEmphasizedShare,
   type MetricEmphasisContext,
@@ -107,8 +111,8 @@ function LoadedSpanContent({
   );
   const emphasizeCost = isEmphasizedShare(ownCost, emphasis?.traceTotalCost);
 
-  // Tokens stand in for cost only when there is no cost to show.
-  const tokenTotal = ownCost ? 0 : (node.totalUsage ?? 0);
+  // Tokens show beside the cost, as LangSmith's run tree does.
+  const tokenTotal = node.totalUsage ?? 0;
   const shouldRenderCostTokens =
     showCostTokens && Boolean(ownCost || tokenTotal);
 
@@ -138,6 +142,15 @@ function LoadedSpanContent({
           <span className="shrink truncate text-sm" title={nodeDisplayName}>
             {nodeDisplayName}
           </span>
+
+          {node.type === "GENERATION" && node.model ? (
+            <span
+              title={node.model}
+              className="bg-muted text-muted-foreground max-w-40 shrink-0 truncate rounded px-1.5 py-px font-mono text-xs"
+            >
+              {node.model}
+            </span>
+          ) : null}
 
           <div className="flex items-center gap-x-2">
             {/* Comment count */}
@@ -178,13 +191,12 @@ function LoadedSpanContent({
               </span>
             ) : null}
 
-            {/* Tokens, only without a cost */}
             {shouldRenderCostTokens && tokenTotal ? (
               <span
-                title="Total tokens"
+                title={`${numberFormatter(tokenTotal, 0)} tokens`}
                 className="text-muted-foreground text-xs"
               >
-                {numberFormatter(tokenTotal, 0)} tokens
+                {compactNumberFormatter(tokenTotal)} tokens
               </span>
             ) : null}
 

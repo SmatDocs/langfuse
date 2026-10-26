@@ -69,6 +69,9 @@ export const getSessionTracesFromEvents = async (props: {
     user_id: string | null;
     observation_count: number | string;
     latency_milliseconds: number | string | null;
+    total_cost: number | string | null;
+    usage_details: Record<string, number | string> | null;
+    error_count: number | string | null;
   }>({
     query,
     params,
@@ -87,6 +90,13 @@ export const getSessionTracesFromEvents = async (props: {
       row.latency_milliseconds === null
         ? null
         : Number(row.latency_milliseconds),
+    // Per-turn totals for the session thread view.
+    totalCost: row.total_cost === null ? null : Number(row.total_cost),
+    totalTokens:
+      Number(row.usage_details?.total ?? 0) ||
+      Number(row.usage_details?.input ?? 0) +
+        Number(row.usage_details?.output ?? 0),
+    errorCount: Number(row.error_count ?? 0),
   }));
 };
 
