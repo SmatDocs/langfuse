@@ -79,25 +79,37 @@ export const getSessionTracesFromEvents = async (props: {
     preferredClickhouseService: "EventsReadOnly",
   });
 
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    timestamp: parseClickhouseUTCDateTimeFormat(row.timestamp),
-    environment: row.environment,
-    userId: row.user_id,
-    observationCount: Number(row.observation_count),
-    latencyMs:
-      row.latency_milliseconds === null
-        ? null
-        : Number(row.latency_milliseconds),
-    // Per-turn totals for the session thread view.
-    totalCost: row.total_cost === null ? null : Number(row.total_cost),
-    totalTokens:
-      Number(row.usage_details?.total ?? 0) ||
-      Number(row.usage_details?.input ?? 0) +
-        Number(row.usage_details?.output ?? 0),
-    errorCount: Number(row.error_count ?? 0),
-  }));
+  return rows.map((row) => {
+    // Per-turn totals for the session thread view; optional so existing
+    // fixtures of this shape stay valid.
+    const turnTotals: SessionTraceTurnTotals = {
+      totalCost: row.total_cost === null ? null : Number(row.total_cost),
+      totalTokens:
+        Number(row.usage_details?.total ?? 0) ||
+        Number(row.usage_details?.input ?? 0) +
+          Number(row.usage_details?.output ?? 0),
+      errorCount: Number(row.error_count ?? 0),
+    };
+    return {
+      id: row.id,
+      name: row.name,
+      timestamp: parseClickhouseUTCDateTimeFormat(row.timestamp),
+      environment: row.environment,
+      userId: row.user_id,
+      observationCount: Number(row.observation_count),
+      latencyMs:
+        row.latency_milliseconds === null
+          ? null
+          : Number(row.latency_milliseconds),
+      ...turnTotals,
+    };
+  });
+};
+
+type SessionTraceTurnTotals = {
+  totalCost?: number | null;
+  totalTokens?: number;
+  errorCount?: number;
 };
 
 export const getSessionsTableCountFromEvents = async (props: {
