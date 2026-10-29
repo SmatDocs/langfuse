@@ -24,7 +24,7 @@ import { cn } from "@/src/utils/tailwind";
 type ThreadTurn = EventSessionTrace;
 
 /** LangSmith's latency colours: green, then amber, then red. */
-export function latencyToneClassName(latencyMs: number | null | undefined) {
+function latencyToneClassName(latencyMs: number | null | undefined) {
   if (latencyMs === null || latencyMs === undefined) return "text-muted-foreground";
   if (latencyMs < 4000) return "bg-light-green text-dark-green";
   if (latencyMs < 8000) return "bg-light-yellow text-dark-yellow";
