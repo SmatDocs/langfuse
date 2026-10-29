@@ -163,7 +163,7 @@ function ThreadSummary({ turns }: { turns: ThreadTurn[] }) {
   );
   return (
     <div className="shrink-0 border-b px-3 py-2">
-      <div className="flex items-center gap-2 text-sm font-medium">
+      <div className="flex items-center gap-2 text-sm font-bold">
         <span className="bg-observation-chain-fill inline-flex size-5 items-center justify-center rounded-sm">
           <ListTree size="sm" __rawClassName="text-white" />
         </span>
@@ -218,7 +218,7 @@ function TurnRow({
         >
           {number}
         </span>
-        <span className="font-medium">Turn {number}</span>
+        <span className="font-bold">Turn {number}</span>
         <span className="text-muted-foreground text-xs">
           {turn.timestamp.toLocaleTimeString([], {
             hour: "numeric",
