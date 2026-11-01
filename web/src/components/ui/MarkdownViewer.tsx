@@ -255,6 +255,7 @@ function MarkdownCode({
           : codeLanguage
       }
       value={codeContent}
+      allowFormatting={codeLanguage === "json"}
       theme={theme === "dark" ? "dark" : "light"}
     />
   ) : (

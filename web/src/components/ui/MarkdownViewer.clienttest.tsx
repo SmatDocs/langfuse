@@ -1,5 +1,5 @@
 /* eslint-disable @repo/prefer-stories-over-client-tests */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import {
   MarkdownView,
   prependBasePathToInternalHref,
@@ -214,6 +214,49 @@ describe("MarkdownView list item layout", () => {
 });
 
 describe("MarkdownView code blocks", () => {
+  const visibleCode = (container: HTMLElement) => {
+    const pre = container.querySelector(".codeblock pre");
+    return pre?.children.length
+      ? Array.from(pre.children)
+          .map((line) => line.textContent)
+          .join("\n")
+      : pre?.textContent;
+  };
+
+  it("indents JSON-fenced schemas automatically and can show the exact original", () => {
+    const compact =
+      '{"type":"object","properties":{"listing":{"type":"object","properties":{"id":{"type":"integer","default":9007199254740993},"title":{"type":"string"}}}}}';
+    const { container } = renderMarkdown(`\`\`\`json\n${compact}\n\`\`\``);
+
+    expect(visibleCode(container)).toContain(
+      '\n  "properties": {\n    "listing": {',
+    );
+    expect(visibleCode(container)).toContain("9007199254740993");
+    const formatting = screen.getByRole("button", {
+      name: "Pretty-print JSON",
+    });
+    expect(formatting).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(formatting);
+    expect(visibleCode(container)).toBe(compact);
+  });
+
+  it.each(["null", "true", "42", '"hello"', "{invalid}"])(
+    "keeps JSON primitives and invalid text safe: %s",
+    (value) => {
+      const { container } = renderMarkdown(`\`\`\`json\n${value}\n\`\`\``);
+      expect(visibleCode(container)).toBe(value);
+    },
+  );
+
+  it("does not reformat code in another language", () => {
+    const code = 'const schema = {"type":"object"};';
+    const { container } = renderMarkdown(`\`\`\`js\n${code}\n\`\`\``);
+    expect(visibleCode(container)).toBe(code);
+    expect(
+      screen.queryByRole("button", { name: "Pretty-print JSON" }),
+    ).toBeNull();
+  });
+
   // A random React key (and an inline `code` renderer, which is a new
   // component type every parent render) remounted CodeBlock and dropped
   // local state such as the copy-button checkmark and scroll position.
