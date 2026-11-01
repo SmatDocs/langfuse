@@ -253,7 +253,7 @@ describe("MarkdownView code blocks", () => {
       <MarkdownView markdown={markdown} />,
     );
     const button = (name: string) =>
-      screen.getByRole("button", { name, exact: true });
+      screen.getByRole("button", { name });
 
     fireEvent.click(button("Collapse JSON section deep"));
     expect(visibleCode(container)).not.toContain("9007199254740993");
