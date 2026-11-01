@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getSessionMessagePreviews } from "@/src/features/sessions/server/session-previews";
 import { auditLog } from "@/src/features/audit-logs/server";
 import { throwIfNoProjectAccess } from "@/src/features/rbac";
 import {
@@ -185,6 +186,25 @@ const handleGetSessionById = async (input: {
 };
 
 export const sessionRouter = createTRPCRouter({
+  messagePreviews: protectedProjectProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        sessions: z
+          .array(
+            z.object({
+              id: z.string().max(1000),
+              environment: z.string().max(1000),
+              createdAt: z.date(),
+            }),
+          )
+          .max(100),
+        isV4: z.boolean(),
+        fromTimestamp: z.date().nullable(),
+        toTimestamp: z.date().nullable(),
+      }),
+    )
+    .query(({ input }) => getSessionMessagePreviews(input)),
   hasAny: protectedProjectProcedure
     .input(
       z.object({
