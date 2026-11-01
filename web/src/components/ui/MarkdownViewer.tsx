@@ -256,6 +256,7 @@ function MarkdownCode({
       }
       value={codeContent}
       allowFormatting={codeLanguage === "json"}
+      allowFolding={codeLanguage === "json"}
       theme={theme === "dark" ? "dark" : "light"}
     />
   ) : (

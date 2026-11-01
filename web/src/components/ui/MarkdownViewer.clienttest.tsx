@@ -1,9 +1,11 @@
 /* eslint-disable @repo/prefer-stories-over-client-tests */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import {
   MarkdownView,
   prependBasePathToInternalHref,
 } from "@/src/components/ui/MarkdownViewer";
+import * as clipboard from "@/src/utils/clipboard";
+import { formatJson } from "@/src/utils/formatJson";
 import { MarkdownJsonView } from "@/src/components/ui/MarkdownJsonView";
 
 vi.mock("next/router", () => ({
@@ -240,7 +242,53 @@ describe("MarkdownView code blocks", () => {
     expect(visibleCode(container)).toBe(compact);
   });
 
-  it.each(["null", "true", "42", '"hello"', "{invalid}"])(
+  it("folds nested JSON independently, keeps state and copies the complete exact value", async () => {
+    const compact =
+      '{"first":{"deep":{"id":9007199254740993,"text":"braces { [ ] }"}},"second":[{"name":"stay visible"},null,{},[]]}';
+    const markdown = `\`\`\`json\n${compact}\n\`\`\``;
+    const copy = vi
+      .spyOn(clipboard, "copyTextToClipboard")
+      .mockResolvedValue(undefined);
+    const { container, rerender } = render(
+      <MarkdownView markdown={markdown} />,
+    );
+    const button = (name: string) =>
+      screen.getByRole("button", { name, exact: true });
+
+    fireEvent.click(button("Collapse JSON section deep"));
+    expect(visibleCode(container)).not.toContain("9007199254740993");
+    expect(visibleCode(container)).toContain("stay visible");
+    fireEvent.click(button("Collapse JSON section first"));
+    rerender(<MarkdownView markdown={markdown} />);
+    const first = button("Expand JSON section first");
+    expect(first).toHaveAttribute("aria-expanded", "false");
+    first.focus();
+    fireEvent.click(first);
+    expect(button("Expand JSON section deep")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    fireEvent.click(button("Expand JSON section deep"));
+    expect(visibleCode(container)).toContain("9007199254740993");
+    expect(visibleCode(container)).toContain("braces { [ ] }");
+    fireEvent.click(button("Collapse JSON section second"));
+    expect(visibleCode(container)).not.toContain("stay visible");
+    expect(visibleCode(container)).toContain("9007199254740993");
+    fireEvent.click(button("Collapse all JSON sections"));
+    fireEvent.click(button("Copy code"));
+    await waitFor(() => expect(copy).toHaveBeenCalledWith(formatJson(compact)));
+    fireEvent.click(button("Expand all JSON sections"));
+    expect(visibleCode(container)).toContain("stay visible");
+    expect(visibleCode(container)).toContain("9007199254740993");
+    fireEvent.click(button("Pretty-print JSON"));
+    expect(visibleCode(container)).toBe(compact);
+    expect(
+      screen.queryByRole("button", { name: "Collapse all JSON sections" }),
+    ).toBeNull();
+    copy.mockRestore();
+  });
+
+  it.each(["null", "true", "42", '"hello"', "{}", "[]", "{invalid}"])(
     "keeps JSON primitives and invalid text safe: %s",
     (value) => {
       const { container } = renderMarkdown(`\`\`\`json\n${value}\n\`\`\``);

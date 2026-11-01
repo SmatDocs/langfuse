@@ -1,5 +1,12 @@
 import { memo, useMemo, useState } from "react";
-import { Check, Copy, Highlighter, ListTree } from "@langfuse/icons";
+import {
+  Check,
+  Copy,
+  FoldVertical,
+  Highlighter,
+  ListTree,
+  UnfoldVertical,
+} from "@langfuse/icons";
 import hljs from "highlight.js/lib/core";
 import json from "highlight.js/lib/languages/json";
 import javascript from "highlight.js/lib/languages/javascript";
@@ -19,6 +26,8 @@ import { useCopyToClipboard } from "@/src/hooks/useCopyToClipboard";
 import { cn } from "@/src/utils/tailwind";
 import { formatJson } from "@/src/utils/formatJson";
 import { normalizeCodeblockLanguage } from "@/src/utils/normalizeCodeblockLanguage";
+import { jsonFoldRanges } from "@/src/utils/jsonFoldRanges";
+import { JsonCodeLines } from "./JsonCodeLines";
 
 export type CodeblockLanguage =
   | "plain"
@@ -82,6 +91,7 @@ interface CodeblockProps {
   value: unknown;
   label?: string;
   allowFormatting?: boolean;
+  allowFolding?: boolean;
   theme?: "light" | "dark";
   borderless?: boolean;
   /** Hide the language caption when the surrounding UI already states it. */
@@ -114,6 +124,7 @@ export const Codeblock = memo(function Codeblock({
   value,
   label = "Code",
   allowFormatting = false,
+  allowFolding = false,
   theme,
   borderless = false,
   showLanguage = true,
@@ -154,6 +165,25 @@ export const Codeblock = memo(function Codeblock({
     format === "pretty" && prettyPrintedText !== null
       ? prettyPrintedText
       : text;
+  const foldRanges = useMemo(
+    () =>
+      allowFolding && format === "pretty" && prettyPrintedText !== null
+        ? jsonFoldRanges(prettyPrintedText)
+        : null,
+    [allowFolding, format, prettyPrintedText],
+  );
+  const [foldState, setFoldState] = useState<{
+    text: string;
+    lines: ReadonlySet<number>;
+  }>({ text: "", lines: new Set() });
+  const collapsedLines =
+    foldState.text === displayText ? foldState.lines : new Set<number>();
+  const toggleLine = (line: number) => {
+    const next = new Set(collapsedLines);
+    if (next.has(line)) next.delete(line);
+    else next.add(line);
+    setFoldState({ text: displayText, lines: next });
+  };
   const detectedLabel =
     languageOptions.find((option) => option.value === detectedLanguage)
       ?.label ?? "Plain text";
@@ -274,6 +304,41 @@ export const Codeblock = memo(function Codeblock({
               )}
             </Tooltip>
           ) : null}
+          {foldRanges && foldRanges.size > 0 ? (
+            <>
+              <Tooltip label="Collapse all JSON sections">
+                {({ getTriggerProps }) => (
+                  <IconButton
+                    {...getTriggerProps()}
+                    icon={FoldVertical}
+                    label="Collapse all JSON sections"
+                    variant="toolbar"
+                    size="sm"
+                    onClick={() =>
+                      setFoldState({
+                        text: displayText,
+                        lines: new Set(foldRanges.keys()),
+                      })
+                    }
+                  />
+                )}
+              </Tooltip>
+              <Tooltip label="Expand all JSON sections">
+                {({ getTriggerProps }) => (
+                  <IconButton
+                    {...getTriggerProps()}
+                    icon={UnfoldVertical}
+                    label="Expand all JSON sections"
+                    variant="toolbar"
+                    size="sm"
+                    onClick={() =>
+                      setFoldState({ text: displayText, lines: new Set() })
+                    }
+                  />
+                )}
+              </Tooltip>
+            </>
+          ) : null}
           <Tooltip label={isCopied ? "Copied" : "Copy code"}>
             {({ getTriggerProps }) => (
               <IconButton
@@ -290,7 +355,17 @@ export const Codeblock = memo(function Codeblock({
       )}
       {bypassHighlighting ? (
         <pre className={codeClassName} style={{ padding: codePadding }}>
-          {displayText}
+          {foldRanges && foldRanges.size > 0 ? (
+            <JsonCodeLines
+              content={displayText.split("\n")}
+              text={displayText}
+              ranges={foldRanges}
+              collapsed={collapsedLines}
+              onToggle={toggleLine}
+            />
+          ) : (
+            displayText
+          )}
         </pre>
       ) : (
         <SyntaxHighlight theme={theme} code={displayText} language={language}>
@@ -308,7 +383,17 @@ export const Codeblock = memo(function Codeblock({
                 overflow: "auto",
               }}
             >
-              {content}
+              {foldRanges && foldRanges.size > 0 ? (
+                <JsonCodeLines
+                  content={content}
+                  text={displayText}
+                  ranges={foldRanges}
+                  collapsed={collapsedLines}
+                  onToggle={toggleLine}
+                />
+              ) : (
+                content
+              )}
             </pre>
           )}
         </SyntaxHighlight>
