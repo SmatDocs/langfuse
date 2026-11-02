@@ -10,6 +10,7 @@ import { Skeleton } from "@/src/components/ui/skeleton";
 import { createTagTableColumn } from "@/src/components/design-system/table/columns/createTagTableColumn";
 import { createDateTableColumn } from "@/src/components/design-system/table/columns/createDateTableColumn";
 import { createLinkTableColumn } from "@/src/components/design-system/table/columns/createLinkTableColumn";
+import { createTextTableColumn } from "@/src/components/design-system/table/columns/createTextTableColumn";
 import { createLinkListTableColumn } from "@/src/components/design-system/table/columns/createLinkListTableColumn";
 import { createNumberTableColumn } from "@/src/components/design-system/table/columns/createNumberTableColumn";
 import { createTokenUsageTableColumn } from "@/src/components/design-system/table/columns/createTokenUsageTableColumn";
@@ -86,6 +87,8 @@ import { useHasProjectAccess } from "@/src/features/rbac";
 
 export type SessionTableRow = {
   id: string;
+  inputPreview?: string | null;
+  outputPreview?: string | null;
   createdAt: Date;
   userIds: string[] | undefined;
   countTraces: number | undefined;
@@ -499,6 +502,35 @@ export default function SessionsTable({
 
   const sessionMetrics = isV4 ? sessionMetricsV4 : sessionMetricsV3;
 
+  const messagePreviews = api.sessions.messagePreviews.useQuery(
+    {
+      projectId,
+      sessions: (sessions.data?.sessions ?? []).map((session) => ({
+        id: session.id,
+        environment: session.environment ?? "default",
+        createdAt: session.createdAt,
+      })),
+      isV4,
+      fromTimestamp: dateRange?.from ?? null,
+      toTimestamp: dateRange?.to ?? null,
+    },
+    {
+      enabled: Boolean(sessions.data?.sessions.length),
+      refetchOnWindowFocus: true,
+      retry: false,
+    },
+  );
+  const messagePreviewsById = useMemo(
+    () =>
+      new Map(
+        messagePreviews.data?.map((preview) => [
+          JSON.stringify([preview.id, preview.environment]),
+          preview,
+        ]),
+      ),
+    [messagePreviews.data],
+  );
+
   type SessionCoreOutput = RouterOutput["sessions"]["all"]["sessions"][number];
   type SessionMetricOutput = RouterOutput["sessions"]["metrics"][number];
 
@@ -588,6 +620,22 @@ export default function SessionsTable({
       },
       enableSorting: true,
     }),
+    ...(["inputPreview", "outputPreview"] as const).map((key) =>
+      createTextTableColumn<SessionTableRow>({
+        accessorKey: key,
+        header: key === "inputPreview" ? "Input preview" : "Output preview",
+        size: 280,
+        enableSorting: false,
+        enableHiding: true,
+        nullValue: messagePreviews.isError
+          ? "Preview unavailable"
+          : "Not captured",
+        mapValue: (value) =>
+          messagePreviews.isPending && !messagePreviews.isError
+            ? { type: "loading" }
+            : (value ?? undefined),
+      }),
+    ),
     createDateTableColumn<SessionTableRow>({
       accessorKey: "createdAt",
       header: "Created At",
@@ -964,6 +1012,12 @@ export default function SessionsTable({
                           (session) => {
                             return {
                               id: session.id,
+                              ...messagePreviewsById.get(
+                                JSON.stringify([
+                                  session.id,
+                                  session.environment ?? "default",
+                                ]),
+                              ),
                               createdAt: session.createdAt,
                               userIds: session.userIds,
                               countTraces: session.countTraces,
